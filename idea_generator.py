@@ -83,12 +83,18 @@ def write_queue(queue_file: Path, queue: list[dict[str, Any]]) -> None:
     os.replace(temp_path, queue_file)
 
 
-def generate_queue_from_ideas(ideas: list[str], queue_file: Path) -> None:
+def generate_queue_from_ideas(
+    ideas: list[str], queue_file: str | Path = "videos.json"
+) -> None:
     if not ideas:
         raise ValueError("No topics were found in ideas.txt.")
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("Set the GEMINI_API_KEY environment variable before generating ideas.")
+
+    queue_file = Path(queue_file)
+    if not queue_file.is_absolute():
+        queue_file = PROJECT_DIR / queue_file
 
     queue = load_queue(queue_file)
     start_index = next_id(queue)

@@ -1,3 +1,4 @@
+import inspect
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,10 @@ import compile_weekly
 
 class PipelineTest(unittest.TestCase):
     def test_idea_validation_and_schedule_helpers(self):
+        queue_parameter = inspect.signature(
+            idea_generator.generate_queue_from_ideas
+        ).parameters["queue_file"]
+        self.assertEqual(queue_parameter.default, "videos.json")
         spec = idea_generator.ShortSpec(
             title="Test Three Tools #Shorts",
             description="Test description",
