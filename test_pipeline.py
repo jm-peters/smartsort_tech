@@ -14,6 +14,30 @@ import compile_weekly
 
 
 class PipelineTest(unittest.TestCase):
+    def test_gemini_retry_falls_back_to_lite_model(self):
+        calls = []
+        response = object()
+
+        class FakeModels:
+            def generate_content(self, **kwargs):
+                calls.append(kwargs["model"])
+                if len(calls) <= 2:
+                    raise idea_generator.ServerError(503, {"error": {"message": "busy"}})
+                return response
+
+        client = type("Client", (), {"models": FakeModels()})()
+        with patch("idea_generator.time.sleep") as sleep:
+            result = idea_generator.generate_with_retry(
+                "test prompt", idea_generator.ShortSpec, retries=3, client=client
+            )
+
+        self.assertIs(result, response)
+        self.assertEqual(
+            calls,
+            ["gemini-2.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+        )
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [5, 10])
+
     def test_idea_validation_and_schedule_helpers(self):
         queue_parameter = inspect.signature(
             idea_generator.generate_queue_from_ideas

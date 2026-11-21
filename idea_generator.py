@@ -3,13 +3,15 @@ import json
 import os
 import re
 import tempfile
+import time
 from datetime import datetime, time as datetime_time, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from google.genai.errors import ServerError
 from pydantic import BaseModel, Field
 from env_loader import load_project_env
-from gemini_client import MODEL, create_gemini_client
+from gemini_client import create_gemini_client
 
 PROJECT_DIR = Path(__file__).resolve().parent
 load_project_env(PROJECT_DIR)
@@ -22,6 +24,37 @@ class ShortSpec(BaseModel):
     urls: list[str] = Field(max_length=3)
     broll_queries: list[str] = Field(min_length=3, max_length=3)
     script: str
+
+
+def generate_with_retry(
+    prompt: str,
+    schema: type[BaseModel],
+    retries: int = 4,
+    client: Any | None = None,
+) -> Any:
+    client = client or create_gemini_client()
+    models_to_try = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+    for attempt in range(retries):
+        model_name = models_to_try[min(attempt // 2, len(models_to_try) - 1)]
+        try:
+            return client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": schema,
+                },
+            )
+        except ServerError as exc:
+            if attempt == retries - 1:
+                raise
+            wait_sec = 5 * (attempt + 1)
+            print(
+                f"   [Gemini {getattr(exc, 'code', 'server error')}] "
+                f"{model_name} busy, retrying in {wait_sec}s..."
+            )
+            time.sleep(wait_sec)
+    raise RuntimeError("Gemini generation exhausted all retry attempts.")
 
 
 def read_ideas(ideas_file: Path) -> list[str]:
@@ -128,7 +161,6 @@ def generate_queue_from_ideas(
         start_date, datetime_time(hour=15), tzinfo=timezone.utc
     )
     client = create_gemini_client()
-    generated: list[dict[str, Any]] = []
 
     for index, topic in enumerate(ideas):
         prompt = f"""
@@ -146,14 +178,7 @@ Requirements:
         spec: ShortSpec | None = None
         last_validation_error: ValueError | None = None
         for attempt in range(3):
-            response = client.models.generate_content(
-                model=MODEL,
-                contents=prompt,
-                config={
-                    "response_mime_type": "application/json",
-                    "response_schema": ShortSpec,
-                },
-            )
+            response = generate_with_retry(prompt, ShortSpec, client=client)
             if response.parsed is not None:
                 candidate = ShortSpec.model_validate(response.parsed)
             elif response.text:
@@ -193,10 +218,11 @@ Requirements:
             "broll_queries": spec.broll_queries,
             "script": spec.script,
         }
-        generated.append(entry)
+        queue.append(entry)
+        write_queue(queue_file, queue)
         print(f"Generated {entry['id']}: {entry['title']}")
 
-    write_queue(queue_file, queue + generated)
+    write_queue(queue_file, queue)
 
 
 def main() -> None:
