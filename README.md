@@ -39,14 +39,18 @@ will not be uploaded automatically.
 
 YouTube publishing is deliberately a separate, explicit action:
 
-1. Enable the YouTube Data API in a Google Cloud project and create an OAuth
-   Desktop app client. Save the client JSON as `client_secret.json` in this
-   folder, set `YOUTUBE_CLIENT_SECRETS` to its path, or provide
-   `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET`.
-2. Run `python build_short.py --publish`. The first run opens Google's OAuth
-   consent flow; the refresh token is saved in `token.json` (or
-   `YOUTUBE_TOKEN_FILE`). Videos upload as private and are scheduled using each
-   entry's future `publish_at_utc`.
+1. Enable the YouTube Data API and YouTube Analytics API in a Google Cloud
+   project and create an OAuth Desktop app client. Save the client JSON as
+   `client_secrets.json` in this folder, or set `YOUTUBE_CLIENT_SECRETS` to its
+   path.
+2. Run `python auth_setup.py`. Sign in to Google and approve the YouTube upload,
+   read-only YouTube, and read-only Analytics scopes. The script requests offline
+   access and saves a refresh token in `token.json`.
+3. Add the complete token JSON as the `YOUTUBE_TOKEN_JSON` Actions secret. Keep
+   both OAuth JSON files out of Git; `.gitignore` already excludes them.
+
+After authorization, `python build_short.py --publish` uploads eligible videos
+as private and schedules them using each entry's future `publish_at_utc`.
 
 Uploaded entries are marked `done` and store their `youtube_video_id`.
 `python build_short.py --single` retains the original one-off workflow and
@@ -79,8 +83,9 @@ then builds and schedules a compilation. Configure `GEMINI_API_KEY`,
 
 - Review Gemini-generated scripts, links, claims, and stock footage licenses
   before publishing.
-- `.env`, `videos.json`, OAuth client files, and OAuth tokens are local configuration
-  and should not be shared or committed.
+- `.env`, OAuth client files, and OAuth tokens are local credentials/configuration
+  and should not be shared or committed. `videos.json` is the tracked queue used
+  by the pipeline and GitHub Actions.
 - Pixabay or fallback footage is only used when URL and local-video sources are
   absent. If no Pixabay result and no local fallback exists, the builder stops
   with an actionable error instead of creating a video without visuals.

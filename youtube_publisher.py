@@ -30,7 +30,7 @@ def load_credentials(scopes: list[str] | None = None) -> Any:
         ) from exc
 
     client_file = Path(
-        os.environ.get("YOUTUBE_CLIENT_SECRETS", str(PROJECT_DIR / "client_secret.json"))
+        os.environ.get("YOUTUBE_CLIENT_SECRETS", str(PROJECT_DIR / "client_secrets.json"))
     )
     token_file = Path(os.environ.get("YOUTUBE_TOKEN_FILE", str(PROJECT_DIR / "token.json")))
     if not client_file.is_absolute():
