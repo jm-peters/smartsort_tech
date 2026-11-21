@@ -11,9 +11,23 @@ import idea_generator
 import youtube_publisher
 import analytics_loop
 import compile_weekly
+import gemini_client
+from google.genai.errors import ServerError
 
 
 class PipelineTest(unittest.TestCase):
+    def test_queue_generation_uses_fallback_without_gemini_key(self):
+        with tempfile.TemporaryDirectory() as directory:
+            queue_file = Path(directory) / "videos.json"
+            queue_file.write_text("[]\n", encoding="utf-8")
+            with patch.dict("os.environ", {"GEMINI_API_KEY": ""}):
+                idea_generator.generate_queue_from_ideas(
+                    ["A practical productivity topic"], queue_file
+                )
+            queue = idea_generator.load_queue(queue_file)
+            self.assertEqual(len(queue), 1)
+            self.assertIn("A practical productivity topic", queue[0]["title"])
+
     def test_gemini_retry_falls_back_to_lite_model(self):
         calls = []
         response = object()
@@ -22,12 +36,12 @@ class PipelineTest(unittest.TestCase):
             def generate_content(self, **kwargs):
                 calls.append(kwargs["model"])
                 if len(calls) <= 2:
-                    raise idea_generator.ServerError(503, {"error": {"message": "busy"}})
+                    raise ServerError(503, {"error": {"message": "busy"}})
                 return response
 
         client = type("Client", (), {"models": FakeModels()})()
-        with patch("idea_generator.time.sleep") as sleep:
-            result = idea_generator.generate_with_retry(
+        with patch("gemini_client.time.sleep") as sleep:
+            result = gemini_client.generate_with_retry(
                 "test prompt", idea_generator.ShortSpec, retries=3, client=client
             )
 
@@ -306,9 +320,25 @@ class PipelineTest(unittest.TestCase):
                     },
                 )()
 
+        gemini_response = type(
+            "Response",
+            (),
+            {
+                "parsed": {
+                    "winning_angles": [
+                        "Topic one",
+                        "Topic two",
+                        "Topic three",
+                        "Topic four",
+                        "Topic five",
+                    ]
+                },
+                "text": None,
+            },
+        )()
         with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), patch(
-            "analytics_loop.create_gemini_client",
-            return_value=type("Client", (), {"models": FakeModels()})(),
+            "analytics_loop.generate_with_retry",
+            return_value=gemini_response,
         ):
             topics = analytics_loop.generate_follow_up_topics(ranked)
         self.assertEqual(len(topics), 5)

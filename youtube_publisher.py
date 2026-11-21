@@ -38,12 +38,16 @@ def load_credentials(scopes: list[str] | None = None) -> Any:
     if not token_file.is_absolute():
         token_file = PROJECT_DIR / token_file
 
-    token_data = json.loads(token_file.read_text(encoding="utf-8")) if token_file.exists() else {}
-    credentials = (
-        Credentials.from_authorized_user_file(str(token_file))
-        if token_file.exists()
-        else None
-    )
+    token_data: dict[str, Any] = {}
+    credentials = None
+    if token_file.exists():
+        try:
+            token_data = json.loads(token_file.read_text(encoding="utf-8"))
+            if not isinstance(token_data, dict):
+                token_data = {}
+            credentials = Credentials.from_authorized_user_file(str(token_file))
+        except Exception as exc:
+            print(f"   [YouTube Warning] Invalid saved OAuth token: {exc}")
     granted_scopes = set(token_data.get("scopes", [])) if credentials else set()
     has_requested_scopes = credentials is not None and set(requested_scopes).issubset(
         granted_scopes

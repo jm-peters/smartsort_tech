@@ -46,7 +46,7 @@ def escape_ass_text(text: str) -> str:
     return text.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
 
 
-async def generate_tts_with_dynamic_ass(
+async def _generate_tts_with_dynamic_ass(
     text: str, voice: str, audio_out: Path, ass_out: Path
 ) -> None:
     audio_out.parent.mkdir(parents=True, exist_ok=True)
@@ -134,6 +134,30 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         audio_tmp.unlink(missing_ok=True)
         ass_tmp.unlink(missing_ok=True)
         raise
+
+
+async def generate_tts_with_dynamic_ass(
+    text: str, voice: str, audio_out: Path, ass_out: Path
+) -> None:
+    voices = [voice, "en-US-GuyNeural", "en-US-AriaNeural"]
+    last_error: Exception | None = None
+    for attempt, fallback_voice in enumerate(dict.fromkeys(voices)):
+        try:
+            await _generate_tts_with_dynamic_ass(
+                text, fallback_voice, audio_out, ass_out
+            )
+            return
+        except Exception as exc:
+            last_error = exc
+            print(
+                f"   [TTS Fallback] Voice {fallback_voice} failed: {exc}. "
+                f"Attempt {attempt + 1}/{len(dict.fromkeys(voices))}"
+            )
+            if attempt + 1 < len(dict.fromkeys(voices)):
+                await asyncio.sleep(5 * (attempt + 1))
+    raise RuntimeError(
+        f"TTS generation failed after all voice fallbacks: {last_error}"
+    )
 
 
 def get_duration(file_path: Path) -> float:

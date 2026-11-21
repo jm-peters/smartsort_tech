@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from env_loader import load_project_env
-from gemini_client import MODEL, create_gemini_client
+from gemini_client import generate_with_retry
 from idea_generator import PROJECT_DIR, generate_queue_from_ideas
 from youtube_publisher import (
     load_credentials,
@@ -18,6 +18,15 @@ load_project_env(PROJECT_DIR)
 
 class TopicList(BaseModel):
     winning_angles: list[str] = Field(min_length=5, max_length=5)
+
+
+STARTER_TOPICS = [
+    "Practical ways to use free AI tools for everyday tasks",
+    "Useful browser features that save time",
+    "Simple phone settings that improve daily use",
+    "Free productivity tools for organizing work",
+    "Easy digital habits that reduce online clutter",
+]
 
 
 def fetch_top_performing_titles(days_back: int = 14) -> list[dict[str, Any]]:
@@ -97,48 +106,48 @@ def generate_follow_up_topics(
     if count != 5:
         raise ValueError("The feedback loop currently generates exactly five topics.")
 
-    client = create_gemini_client()
-    response = client.models.generate_content(
-        model=MODEL,
-        contents=(
+    try:
+        response = generate_with_retry(
             "Create exactly five distinct, fact-checkable YouTube Shorts topic ideas "
             "that extend the winning audience interests below. Do not repeat titles, "
             "make unsupported claims, or provide scripts; return concise topic ideas.\n"
-            + json.dumps(winners[:3], ensure_ascii=False)
-        ),
-        config={
-            "response_mime_type": "application/json",
-            "response_schema": TopicList,
-        },
-    )
-    if response.parsed is not None:
-        topics = TopicList.model_validate(response.parsed).winning_angles
-    elif response.text:
-        topics = TopicList.model_validate_json(response.text).winning_angles
-    else:
-        raise RuntimeError("Gemini returned an empty topic response.")
-    topics = [topic.strip() for topic in topics]
-    if len(set(topic.casefold() for topic in topics)) != 5 or any(not topic for topic in topics):
-        raise ValueError("Gemini must return five non-empty, distinct topic ideas.")
-    return topics
+            + json.dumps(winners[:3], ensure_ascii=False),
+            TopicList,
+        )
+        if response.parsed is not None:
+            topics = TopicList.model_validate(response.parsed).winning_angles
+        elif response.text:
+            topics = TopicList.model_validate_json(response.text).winning_angles
+        else:
+            raise RuntimeError("Gemini returned an empty topic response.")
+        topics = [topic.strip() for topic in topics]
+        if len(set(topic.casefold() for topic in topics)) != 5 or any(
+            not topic for topic in topics
+        ):
+            raise ValueError("Gemini must return five non-empty, distinct topic ideas.")
+        return topics
+    except Exception as exc:
+        print(f"   [Gemini Fallback] Could not generate follow-up topics: {exc}")
+        return STARTER_TOPICS.copy()
 
 
 def run_feedback_loop(days_back: int = 14) -> list[str]:
     print(f"Fetching YouTube Analytics for the last {days_back} days...")
-    winners = fetch_top_performing_titles(days_back)
+    try:
+        winners = fetch_top_performing_titles(days_back)
+    except Exception as exc:
+        winners = []
+        print(f"   [Analytics Fallback] Could not read YouTube Analytics: {exc}")
     if winners:
         topics = generate_follow_up_topics(winners[:3])
         print("Using top-performing topics to generate follow-ups.")
     else:
-        topics = [
-            "Practical ways to use free AI tools for everyday tasks",
-            "Useful browser features that save time",
-            "Simple phone settings that improve daily use",
-            "Free productivity tools for organizing work",
-            "Easy digital habits that reduce online clutter",
-        ]
-        print("No analytics rows yet; using starter topics.")
-    generate_queue_from_ideas(topics, "videos.json")
+        topics = STARTER_TOPICS.copy()
+        print("No analytics data available; using starter topics.")
+    try:
+        generate_queue_from_ideas(topics, "videos.json")
+    except Exception as exc:
+        print(f"   [Queue Fallback] Could not generate the queue batch: {exc}")
     return topics
 
 

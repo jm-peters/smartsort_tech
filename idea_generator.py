@@ -3,15 +3,13 @@ import json
 import os
 import re
 import tempfile
-import time
 from datetime import datetime, time as datetime_time, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from google.genai.errors import ServerError
 from pydantic import BaseModel, Field
 from env_loader import load_project_env
-from gemini_client import create_gemini_client
+from gemini_client import create_gemini_client, generate_with_retry
 
 PROJECT_DIR = Path(__file__).resolve().parent
 load_project_env(PROJECT_DIR)
@@ -24,37 +22,6 @@ class ShortSpec(BaseModel):
     urls: list[str] = Field(max_length=3)
     broll_queries: list[str] = Field(min_length=3, max_length=3)
     script: str
-
-
-def generate_with_retry(
-    prompt: str,
-    schema: type[BaseModel],
-    retries: int = 4,
-    client: Any | None = None,
-) -> Any:
-    client = client or create_gemini_client()
-    models_to_try = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
-    for attempt in range(retries):
-        model_name = models_to_try[min(attempt // 2, len(models_to_try) - 1)]
-        try:
-            return client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config={
-                    "response_mime_type": "application/json",
-                    "response_schema": schema,
-                },
-            )
-        except ServerError as exc:
-            if attempt == retries - 1:
-                raise
-            wait_sec = 5 * (attempt + 1)
-            print(
-                f"   [Gemini {getattr(exc, 'code', 'server error')}] "
-                f"{model_name} busy, retrying in {wait_sec}s..."
-            )
-            time.sleep(wait_sec)
-    raise RuntimeError("Gemini generation exhausted all retry attempts.")
 
 
 def read_ideas(ideas_file: Path) -> list[str]:
@@ -100,6 +67,29 @@ def validate_spec(spec: ShortSpec, topic: str) -> None:
         )
 
 
+def fallback_spec(topic: str) -> ShortSpec:
+    return ShortSpec(
+        title=f"{topic[:48].strip()} #Shorts",
+        description=f"Practical information about {topic}.",
+        tags=["technology", "productivity", "tips"],
+        urls=[],
+        broll_queries=[
+            "technology desk setup",
+            "phone screen closeup",
+            "person using laptop",
+        ],
+        script=(
+            f"Here is a simple way to think about {topic}. Start with the most "
+            "important result you want, then break it into one small step you "
+            "can complete today. Check your assumptions, use a trusted source, "
+            "and avoid rushing through details that may change the outcome. "
+            "Test the process on a small example before applying it everywhere. "
+            "These practical habits save time, reduce mistakes, and make it "
+            "much easier to get consistent results. Try this approach now."
+        ),
+    )
+
+
 def write_queue(queue_file: Path, queue: list[dict[str, Any]]) -> None:
     queue_file.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
@@ -123,7 +113,7 @@ def generate_queue_from_ideas(
         raise ValueError("No topics were found in ideas.txt.")
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise RuntimeError("Set the GEMINI_API_KEY environment variable before generating ideas.")
+        print("   [Gemini Fallback] GEMINI_API_KEY is unavailable; using safe fallback specs.")
 
     queue_file = Path(queue_file)
     if not queue_file.is_absolute():
@@ -160,7 +150,7 @@ def generate_queue_from_ideas(
     publish_start = datetime.combine(
         start_date, datetime_time(hour=15), tzinfo=timezone.utc
     )
-    client = create_gemini_client()
+    client = create_gemini_client() if api_key else None
 
     for index, topic in enumerate(ideas):
         prompt = f"""
@@ -177,34 +167,44 @@ Requirements:
 """
         spec: ShortSpec | None = None
         last_validation_error: ValueError | None = None
-        for attempt in range(3):
-            response = generate_with_retry(prompt, ShortSpec, client=client)
-            if response.parsed is not None:
-                candidate = ShortSpec.model_validate(response.parsed)
-            elif response.text:
-                candidate = ShortSpec.model_validate_json(response.text)
-            else:
-                raise RuntimeError(
-                    f"Gemini returned an empty response for topic {topic!r}."
-                )
-            try:
-                validate_spec(candidate, topic)
-            except ValueError as exc:
-                last_validation_error = exc
-                if attempt == 2:
-                    raise
-                prompt += (
-                    "\nYour previous response failed validation: "
-                    f"{exc}. Return a corrected response, especially an 80-85 word script."
-                )
-                continue
-            spec = candidate
-            break
+        if client is None:
+            spec = fallback_spec(topic)
+        else:
+            for attempt in range(3):
+                try:
+                    response = generate_with_retry(prompt, ShortSpec, client=client)
+                except Exception as exc:
+                    print(f"   [Gemini Fallback] Could not generate {topic!r}: {exc}")
+                    last_validation_error = ValueError(
+                        f"Gemini unavailable; using fallback spec: {exc}"
+                    )
+                    continue
+                if response.parsed is not None:
+                    candidate = ShortSpec.model_validate(response.parsed)
+                elif response.text:
+                    candidate = ShortSpec.model_validate_json(response.text)
+                else:
+                    raise RuntimeError(
+                        f"Gemini returned an empty response for topic {topic!r}."
+                    )
+                try:
+                    validate_spec(candidate, topic)
+                except ValueError as exc:
+                    last_validation_error = exc
+                    if attempt == 2:
+                        raise
+                    prompt += (
+                        "\nYour previous response failed validation: "
+                        f"{exc}. Return a corrected response, especially an 80-85 word script."
+                    )
+                    continue
+                spec = candidate
+                break
         if spec is None:
-            raise RuntimeError(
-                f"Gemini could not produce a valid spec for {topic!r}: "
-                f"{last_validation_error}"
+            print(
+                f"   [Gemini Fallback] Using deterministic fallback for {topic!r}"
             )
+            spec = fallback_spec(topic)
         publish_time = (publish_start + timedelta(days=index)).strftime("%Y-%m-%dT%H:%M:%SZ")
         entry = {
             "id": f"short_{start_index + index:02d}",

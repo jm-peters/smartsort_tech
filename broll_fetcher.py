@@ -207,14 +207,36 @@ def fetch_and_stitch_broll(
                 print(f"   [Fallback Warning] Could not process {source}: {exc}")
 
     if not normalized_clips:
-        if not api_key:
-            reason = "PIXABAY_API_KEY is unset"
-        else:
-            reason = "Pixabay returned no usable clips"
-        raise ValueError(
-            f"No B-roll clips available ({reason}) and no MP4 files were found in "
-            f"{FALLBACK_DIR}."
+        print("   [Fallback] Creating an abstract vertical background clip.")
+        generated = temp_dir / "generated_fallback.mp4"
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=0x14213d:s=1080x1920:r=30:d=13.5",
+                "-vf",
+                "vignette=PI/5,noise=alls=8:allf=t",
+                "-t",
+                "13.5",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-crf",
+                "28",
+                "-pix_fmt",
+                "yuv420p",
+                "-an",
+                str(generated),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
         )
+        normalized_clips.append(generated)
 
     concat_file = temp_dir / "concat_list.txt"
     append_concat_file(concat_file, normalized_clips)
