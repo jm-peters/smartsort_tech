@@ -1,0 +1,4 @@
+# Add one video topic per line, then run: python idea_generator.py
+3 free AI websites for students
+Hidden Chrome shortcuts everyone should know
+Best free video editors without watermarks

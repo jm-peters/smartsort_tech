@@ -1,0 +1,8 @@
+__pycache__/
+.env
+assets/.env
+client_secret*.json
+token.json
+output/
+temp/
+temp_comp/

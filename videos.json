@@ -1,0 +1,54 @@
+[
+  {
+    "id": "short_01",
+    "status": "preview",
+    "title": "3 Essential Free AI Tools for Students #Shorts",
+    "description": "Discover three completely free, powerful AI websites that will help every student boost productivity, simplify complex research, and organize study sessions more effectively this semester.",
+    "tags": [
+      "AI",
+      "student",
+      "productivity",
+      "studyhacks",
+      "tech"
+    ],
+    "publish_at_utc": "2026-11-22T15:00:00Z",
+    "voice": "en-US-AndrewNeural",
+    "urls": [
+      "https://scholar.google.com",
+      "https://otter.ai",
+      "https://chatgpt.com"
+    ],
+    "broll_queries": [
+      "student studying on laptop",
+      "hand using smartphone screen",
+      "organized digital dashboard"
+    ],
+    "script": "Stop wasting hours on assignments! Here are three free AI tools every student needs. First, Google Scholar helps you find credible research papers in seconds. Second, Otter.ai records and summarizes your lectures perfectly, so you never miss a vital detail again. Finally, use ChatGPT to explain complex concepts or outline your next big essay effortlessly. These websites will save you massive amounts of time during finals week. Try them out today to boost your grades and simplify your study routine. Success is just one click away!",
+    "rendered_video": "output/short_01.mp4"
+  },
+  {
+    "id": "short_02",
+    "status": "preview",
+    "title": "Top Free Browser Video Editors for Beginners #Shorts",
+    "description": "Discover the best free, browser-based video editing tools that make creating content simple and accessible for everyone without needing expensive software.",
+    "tags": [
+      "videoediting",
+      "freeeditors",
+      "contentcreation",
+      "browserapps"
+    ],
+    "publish_at_utc": "2026-11-23T15:00:00Z",
+    "voice": "en-US-AndrewNeural",
+    "urls": [
+      "https://www.canva.com",
+      "https://clipchamp.com"
+    ],
+    "broll_queries": [
+      "person editing video on laptop",
+      "browser based video editor interface",
+      "fast motion video rendering"
+    ],
+    "script": "Stop paying for expensive editing software! You can create professional videos directly in your web browser for free. Tools like Canva and Clipchamp allow you to trim, add effects, and export high-quality clips without downloading heavy programs. They are perfect for beginners who want speed and simplicity. Just open your browser, upload your footage, and start building your masterpiece immediately. These platforms handle everything from social media edits to complex presentations effortlessly. Start creating your next viral video today using these powerful, accessible online tools!",
+    "rendered_video": "output/short_02.mp4"
+  }
+]
