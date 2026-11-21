@@ -50,5 +50,82 @@
     ],
     "script": "Stop paying for expensive editing software! You can create professional videos directly in your web browser for free. Tools like Canva and Clipchamp allow you to trim, add effects, and export high-quality clips without downloading heavy programs. They are perfect for beginners who want speed and simplicity. Just open your browser, upload your footage, and start building your masterpiece immediately. These platforms handle everything from social media edits to complex presentations effortlessly. Start creating your next viral video today using these powerful, accessible online tools!",
     "rendered_video": "output/short_02.mp4"
+  },
+  {
+    "id": "short_03",
+    "status": "error",
+    "title": "3 Free AI Websites for Students! #Shorts",
+    "description": "Boost your academic performance with these three essential free AI tools designed to simplify your study routine today.",
+    "tags": [
+      "AI",
+      "students",
+      "study hacks",
+      "productivity",
+      "education"
+    ],
+    "publish_at_utc": "2026-11-24T15:00:00Z",
+    "voice": "en-US-AndrewNeural",
+    "urls": [
+      "https://chatgpt.com",
+      "https://perplexity.ai",
+      "https://grammarly.com"
+    ],
+    "broll_queries": [
+      "student typing on laptop",
+      "AI interface screen recording",
+      "happy student studying"
+    ],
+    "script": "Stop wasting hours on assignments! Here are three free AI tools every student needs. First is ChatGPT, perfect for brainstorming complex essay topics. Second is Perplexity AI; it provides cited research, saving you massive amounts of time on fact-checking. Finally, use Grammarly to polish your grammar and ensure your writing is mistake-free every single time. These powerful resources will definitely boost your academic performance without costing you a single cent. Stop struggling and start working smarter today. Check the pinned comment for all these links!",
+    "error_msg": "No audio was received. Please verify that your parameters are correct."
+  },
+  {
+    "id": "short_04",
+    "status": "error",
+    "title": "Chrome Shortcuts You Need Now #Shorts",
+    "description": "Learn essential Google Chrome keyboard shortcuts to boost your productivity instantly.",
+    "tags": [
+      "productivity",
+      "chrome",
+      "shortcuts",
+      "tips"
+    ],
+    "publish_at_utc": "2026-11-25T15:00:00Z",
+    "voice": "en-US-AndrewNeural",
+    "urls": [
+      "https://support.google.com/chrome/answer/157179"
+    ],
+    "broll_queries": [
+      "typing on keyboard",
+      "chrome browser interface",
+      "mouse clicking tabs"
+    ],
+    "script": "Stop wasting time clicking around. Master these Chrome shortcuts to browse like a pro. First, hit Ctrl plus Shift plus T to instantly restore that accidentally closed tab. Need to find something fast? Press Ctrl plus F to open the search bar immediately. Want to clear your history in a flash? Use Ctrl plus Shift plus Delete to open settings. Finally, jump between open tabs using Ctrl plus Tab. These simple tricks will save you hours of effort every single week. Start using them right now!",
+    "error_msg": "No audio was received. Please verify that your parameters are correct."
+  },
+  {
+    "id": "short_05",
+    "status": "error",
+    "title": "Top 3 Free Video Editors No Watermark #Shorts",
+    "description": "Discover the best professional video editing software that lets you export your creations without annoying watermarks.",
+    "tags": [
+      "videoediting",
+      "freeeditors",
+      "contentcreation",
+      "tech"
+    ],
+    "publish_at_utc": "2026-11-26T15:00:00Z",
+    "voice": "en-US-AndrewNeural",
+    "urls": [
+      "https://shotcut.org",
+      "https://kdenlive.org",
+      "https://www.blackmagicdesign.com"
+    ],
+    "broll_queries": [
+      "person editing on computer",
+      "software timeline interface",
+      "exporting video file progress"
+    ],
+    "script": "Stop paying for editing software! You can create pro-level content for free without any watermarks ruining your hard work. First, check out Shotcut for its incredible versatility. Next, Kdenlive offers a powerful, open-source experience perfect for intermediate editors. Finally, DaVinci Resolve is the industry standard for Hollywood-grade color grading and finishing. All three tools provide robust features without locking your exports behind a paywall. Stop wasting your money today and start downloading these professional applications. Your creative workflow will thank you. Now go make something truly amazing.",
+    "error_msg": "No audio was received. Please verify that your parameters are correct."
   }
 ]

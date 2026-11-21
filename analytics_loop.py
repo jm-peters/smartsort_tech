@@ -138,7 +138,7 @@ def run_feedback_loop(days_back: int = 14) -> list[str]:
             "Easy digital habits that reduce online clutter",
         ]
         print("No analytics rows yet; using starter topics.")
-    generate_queue_from_ideas(topics)
+    generate_queue_from_ideas(topics, "videos.json")
     return topics
 
 
