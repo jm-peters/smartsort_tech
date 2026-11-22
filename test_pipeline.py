@@ -16,6 +16,35 @@ from google.genai.errors import ServerError
 
 
 class PipelineTest(unittest.TestCase):
+    def test_high_retention_prompt_and_duplicate_filter(self):
+        prompt = idea_generator.build_high_retention_prompt("Free browser tools")
+        self.assertIn("CURIOSITY-GAP HOOK", prompt)
+        self.assertIn("no login walls", prompt)
+
+        winners = [{"title": "Winning Chrome trick", "score": 5000}]
+        analytics_prompt = analytics_loop.build_analytics_topic_prompt(
+            winners,
+            ["3 Chrome Extensions #Shorts"],
+        )
+        self.assertIn("ALREADY PUBLISHED OR QUEUED TITLES", analytics_prompt)
+        self.assertIn("3 Chrome Extensions #Shorts", analytics_prompt)
+        filtered = analytics_loop.filter_duplicate_topics(
+            ["3 Chrome Extensions #Shorts", "Hidden Android Battery Setting"],
+            ["3 Chrome Extensions #Shorts"],
+        )
+        self.assertEqual(filtered, ["Hidden Android Battery Setting"])
+
+    def test_workflow_has_concurrency_and_safe_state_save(self):
+        workflow = (
+            Path(__file__).resolve().parent / ".github" / "workflows" / "weekly_shorts.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("group: youtube-factory-main", workflow)
+        self.assertIn("cancel-in-progress: false", workflow)
+        self.assertIn("git pull --rebase origin main", workflow)
+        self.assertIn("git push origin main", workflow)
+        self.assertIn("TELEGRAM_BOT_TOKEN", workflow)
+        self.assertIn("TELEGRAM_CHAT_ID", workflow)
+
     def test_queue_generation_uses_fallback_without_gemini_key(self):
         with tempfile.TemporaryDirectory() as directory:
             queue_file = Path(directory) / "videos.json"

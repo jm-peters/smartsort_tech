@@ -20,6 +20,14 @@ class TopicList(BaseModel):
     winning_angles: list[str] = Field(min_length=5, max_length=5)
 
 
+ANALYTICS_SYSTEM_INSTRUCTION = """
+You are a YouTube Shorts growth strategist and viral packaging expert.
+Your job is to analyze retention and view data from a tech, AI, and productivity channel and engineer 5 follow-up video concepts with high swipe-through retention and subscriber conversion.
+"""
+
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+
+
 STARTER_TOPICS = [
     "Practical ways to use free AI tools for everyday tasks",
     "Useful browser features that save time",
@@ -27,6 +35,46 @@ STARTER_TOPICS = [
     "Free productivity tools for organizing work",
     "Easy digital habits that reduce online clutter",
 ]
+
+
+def build_analytics_topic_prompt(
+    winners: list[dict[str, Any]], existing_titles: list[str]
+) -> str:
+    return f"""
+Analyze these top-performing YouTube Shorts from my channel (ranked by retention-weighted score):
+{json.dumps(winners, indent=2)}
+
+ALREADY PUBLISHED OR QUEUED TITLES (DO NOT REPEAT THESE):
+{json.dumps(existing_titles[-25:], indent=2)}
+
+TASK:
+Generate 5 fresh, high-curiosity follow-up Short topic concepts that double down on what worked above.
+
+STRICT RULES FOR EVERY TOPIC CONCEPT:
+1. PATTERN RECOGNITION: Identify why the top winners scored high and create 3 spin-offs on the #1 winning pattern plus 2 adjacent curiosity angles.
+2. CURIOSITY-GAP FRAMING: Use hooks such as hidden settings or free tools, never dry category labels.
+3. VISUAL-FRIENDLY: Demonstrate the topic on public, login-free websites or everyday phone/laptop screens.
+4. ZERO DUPLICATES: Do not repeat any tool, setting, or exact title from the 25-title memory window.
+"""
+
+
+def normalize_topic(topic: str) -> str:
+    return " ".join(topic.casefold().split())
+
+
+def filter_duplicate_topics(
+    topics: list[str], existing_titles: list[str]
+) -> list[str]:
+    existing = {normalize_topic(title) for title in existing_titles[-25:] if title.strip()}
+    unique: list[str] = []
+    for topic in topics:
+        normalized = normalize_topic(topic)
+        if not normalized or normalized in existing:
+            continue
+        if normalized in {normalize_topic(item) for item in unique}:
+            continue
+        unique.append(topic.strip())
+    return unique
 
 
 def fetch_top_performing_titles(days_back: int = 14) -> list[dict[str, Any]]:
@@ -98,7 +146,9 @@ def fetch_top_performing_titles(days_back: int = 14) -> list[dict[str, Any]]:
 
 
 def generate_follow_up_topics(
-    winners: list[dict[str, Any]], count: int = 5
+    winners: list[dict[str, Any]],
+    count: int = 5,
+    existing_titles: list[str] | None = None,
 ) -> list[str]:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -107,12 +157,15 @@ def generate_follow_up_topics(
         raise ValueError("The feedback loop currently generates exactly five topics.")
 
     try:
+        prompt = build_analytics_topic_prompt(
+            winners[:3],
+            existing_titles or [],
+        )
         response = generate_with_retry(
-            "Create exactly five distinct, fact-checkable YouTube Shorts topic ideas "
-            "that extend the winning audience interests below. Do not repeat titles, "
-            "make unsupported claims, or provide scripts; return concise topic ideas.\n"
-            + json.dumps(winners[:3], ensure_ascii=False),
+            prompt,
             TopicList,
+            system_instruction=ANALYTICS_SYSTEM_INSTRUCTION,
+            temperature=0.9,
         )
         if response.parsed is not None:
             topics = TopicList.model_validate(response.parsed).winning_angles
@@ -121,9 +174,8 @@ def generate_follow_up_topics(
         else:
             raise RuntimeError("Gemini returned an empty topic response.")
         topics = [topic.strip() for topic in topics]
-        if len(set(topic.casefold() for topic in topics)) != 5 or any(
-            not topic for topic in topics
-        ):
+        topics = filter_duplicate_topics(topics, existing_titles or [])
+        if len(topics) != 5:
             raise ValueError("Gemini must return five non-empty, distinct topic ideas.")
         return topics
     except Exception as exc:
@@ -139,7 +191,22 @@ def run_feedback_loop(days_back: int = 14) -> list[str]:
         winners = []
         print(f"   [Analytics Fallback] Could not read YouTube Analytics: {exc}")
     if winners:
-        topics = generate_follow_up_topics(winners[:3])
+        existing_queue: list[Any] = []
+        try:
+            queue_path = PROJECT_DIR / "videos.json"
+            if queue_path.exists():
+                with queue_path.open("r", encoding="utf-8") as queue_file:
+                    existing_queue = json.load(queue_file)
+                    if not isinstance(existing_queue, list):
+                        existing_queue = []
+        except (OSError, json.JSONDecodeError):
+            existing_queue = []
+        existing_titles = [
+            str(item.get("title", ""))
+            for item in existing_queue
+            if isinstance(item, dict)
+        ]
+        topics = generate_follow_up_topics(winners[:3], existing_titles=existing_titles)
         print("Using top-performing topics to generate follow-ups.")
     else:
         topics = STARTER_TOPICS.copy()

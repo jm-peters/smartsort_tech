@@ -30,6 +30,8 @@ def generate_with_retry(
     schema: type[Any],
     retries: int = 4,
     client: genai.Client | None = None,
+    system_instruction: str | None = None,
+    temperature: float | None = None,
 ) -> Any:
     client = client or create_gemini_client()
     for attempt in range(retries):
@@ -37,13 +39,18 @@ def generate_with_retry(
             FALLBACK_MODELS[min(attempt // 2, len(FALLBACK_MODELS) - 1)]
         )
         try:
+            config = {
+                "response_mime_type": "application/json",
+                "response_schema": schema,
+            }
+            if system_instruction:
+                config["system_instruction"] = system_instruction
+            if temperature is not None:
+                config["temperature"] = temperature
             return client.models.generate_content(
                 model=model_name,
                 contents=prompt,
-                config={
-                    "response_mime_type": "application/json",
-                    "response_schema": schema,
-                },
+                config=config,
             )
         except APIError as exc:
             code = getattr(exc, "code", None)

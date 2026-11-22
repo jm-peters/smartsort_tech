@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: youtube-factory-main
+  cancel-in-progress: false
+
 jobs:
   build-and-schedule:
     runs-on: ubuntu-latest
@@ -45,6 +49,7 @@ jobs:
             printf '{}' > token.json
           fi
       - name: Analyze performance and generate follow-up Shorts
+        id: analyze
         continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -53,6 +58,7 @@ jobs:
         run: |
           python analytics_loop.py
       - name: Render and schedule Shorts
+        id: render
         continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -62,6 +68,7 @@ jobs:
         run: |
           python master_pipeline.py --publish
       - name: Compile and schedule weekly 16:9 video
+        id: compile
         continue-on-error: true
         env:
           YOUTUBE_CLIENT_SECRETS: client_secrets.json
@@ -69,10 +76,22 @@ jobs:
         run: |
           python compile_weekly.py --publish
       - name: Commit queue updates
+        id: commit
         run: |
           git config user.name "Shorts Bot"
-          git config user.email "shorts-bot@users.noreply.github.com"
-          git pull --rebase origin main
+          git config user.email "actions@github.com"
           git add videos.json
-          git diff --cached --quiet || git commit -m "chore: weekly batch scheduled [skip ci]"
-          git push origin main
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: weekly batch scheduled [skip ci]"
+            git pull --rebase origin main
+            git push origin main
+          fi
+      - name: Send Telegram pipeline alert
+        if: ${{ always() }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PIPELINE_FAILED: ${{ steps.analyze.outcome == 'failure' || steps.render.outcome == 'failure' || steps.compile.outcome == 'failure' || steps.commit.outcome == 'failure' }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python .github/scripts/notify_telegram.py

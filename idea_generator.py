@@ -24,6 +24,37 @@ class ShortSpec(BaseModel):
     script: str
 
 
+SYSTEM_INSTRUCTIONS = """
+You are an elite YouTube Shorts scriptwriter and retention strategist for a fast-paced faceless tech, AI, and productivity channel.
+Every script you write is engineered for strong first-three-second curiosity, rapid pacing, and subscriber conversion.
+"""
+
+
+def build_high_retention_prompt(topic: str) -> str:
+    return f"""
+Write a high-retention 35-second YouTube Short package about: "{topic}".
+
+STRICT SCRIPT RULES (75 to 90 words total):
+1. CURIOSITY-GAP HOOK (First 3 seconds / about 12 words):
+   - NEVER start with "Hey guys", "Welcome back", "In this video", or "Today we are looking at".
+   - Start immediately with a bold pattern interrupt, hidden shortcut, or cost/time-saving shock.
+2. ZERO-FLUFF BODY (Seconds 3 to 29):
+   - Deliver 1 to 3 concrete, immediately actionable steps or tools.
+   - Use short, punchy, conversational sentences of 8 to 14 words.
+3. SPECIFIC SUBSCRIBER TEASER + LOOP ENDING (Last 5 seconds / about 15 words):
+   - NEVER say generic "Like and subscribe for more".
+   - Tie the subscribe call-to-action to a specific upcoming payoff or open loop.
+
+METADATA & VISUAL RULES:
+- title: Under 58 characters, curiosity-driven, and it MUST end with #Shorts.
+- description: 2 punchy lines summarizing the value, a question to spark comments, and 4 relevant hashtags including #Shorts.
+- tags: 5 to 7 high-search-volume lowercase keywords.
+- urls: 1 to 3 real, publicly accessible URLs with no login walls ONLY if the topic demonstrates specific websites/tools; otherwise [].
+- broll_queries: Always provide exactly 3 short 2-word visual search phrases.
+- Keep every claim accurate and never invent URLs, features, or statistics.
+"""
+
+
 def read_ideas(ideas_file: Path) -> list[str]:
     if not ideas_file.is_file():
         raise FileNotFoundError(f"Ideas file not found: {ideas_file}")
@@ -153,18 +184,7 @@ def generate_queue_from_ideas(
     client = create_gemini_client() if api_key else None
 
     for index, topic in enumerate(ideas):
-        prompt = f"""
-Write a fast-paced 35-second YouTube Short script about this topic: {topic!r}.
-Requirements:
-- Hook viewers in the first 3 seconds; do not say "Hey guys".
-- The script must contain 80 to 85 words.
-- If the topic involves websites or tools, include 1 to 3 real public URLs in urls;
-  otherwise return an empty urls list.
-- Always include exactly 3 short visual search phrases (up to 5 words each) in
-  broll_queries that match scenes in the script.
-- The title must be under 60 characters and end with #Shorts.
-- Keep claims accurate; do not invent URLs, product features, or statistics.
-"""
+        prompt = build_high_retention_prompt(topic)
         spec: ShortSpec | None = None
         last_validation_error: ValueError | None = None
         if client is None:
@@ -172,7 +192,13 @@ Requirements:
         else:
             for attempt in range(3):
                 try:
-                    response = generate_with_retry(prompt, ShortSpec, client=client)
+                    response = generate_with_retry(
+                        prompt,
+                        ShortSpec,
+                        client=client,
+                        system_instruction=SYSTEM_INSTRUCTIONS,
+                        temperature=0.85,
+                    )
                 except Exception as exc:
                     print(f"   [Gemini Fallback] Could not generate {topic!r}: {exc}")
                     last_validation_error = ValueError(

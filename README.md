@@ -79,6 +79,11 @@ then builds and schedules a compilation. Configure `GEMINI_API_KEY`,
 `PIXABAY_API_KEY`, `YOUTUBE_CLIENT_SECRETS`, and an updated
 `YOUTUBE_TOKEN_JSON` in repository Actions secrets before enabling it.
 
+Optional Telegram alerts can be enabled without changing the pipeline:
+add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as repository Actions secrets.
+The workflow sends a success or failure summary after each run and continues
+normally if Telegram is unavailable or either secret is missing.
+
 ## Notes
 
 - Review Gemini-generated scripts, links, claims, and stock footage licenses
