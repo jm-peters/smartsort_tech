@@ -22,6 +22,8 @@ class ShortSpec(BaseModel):
     urls: list[str] = Field(max_length=3)
     broll_queries: list[str] = Field(min_length=3, max_length=3)
     script: str
+    fb_caption: str
+    fb_first_comment: str
 
 
 SYSTEM_INSTRUCTIONS = """
@@ -51,6 +53,8 @@ METADATA & VISUAL RULES:
 - tags: 5 to 7 high-search-volume lowercase keywords.
 - urls: 1 to 3 real, publicly accessible URLs with no login walls ONLY if the topic demonstrates specific websites/tools; otherwise [].
 - broll_queries: Always provide exactly 3 short 2-word visual search phrases.
+- fb_caption: A Facebook Reel caption with a one-line curiosity hook, 3 short bullet takeaways, an open question, and hashtags #TechHacks #Productivity #FreeTools #DigitalTips. Do not include URLs or #Shorts.
+- fb_first_comment: A helpful first comment listing the exact tool names/websites mentioned in the script, or a bonus tip if no URLs were used.
 - Keep every claim accurate and never invent URLs, features, or statistics.
 """
 
@@ -96,6 +100,16 @@ def validate_spec(spec: ShortSpec, topic: str) -> None:
         raise ValueError(
             f"Gemini returned an empty or overly long B-roll query for {topic!r}."
         )
+    if (
+        not spec.fb_caption.strip()
+        or "#shorts" in spec.fb_caption.casefold()
+        or "http://" in spec.fb_caption.casefold()
+        or "https://" in spec.fb_caption.casefold()
+        or not spec.fb_first_comment.strip()
+    ):
+        raise ValueError(
+            f"Gemini returned invalid Facebook copy for {topic!r}."
+        )
 
 
 def fallback_spec(topic: str) -> ShortSpec:
@@ -118,6 +132,15 @@ def fallback_spec(topic: str) -> ShortSpec:
             "These practical habits save time, reduce mistakes, and make it "
             "much easier to get consistent results. Try this approach now."
         ),
+        fb_caption=(
+            f"One simple way to approach {topic}.\n"
+            "• Start with the result you want.\n"
+            "• Test one small step.\n"
+            "• Check your assumptions.\n"
+            "What would you try first?\n"
+            "#TechHacks #Productivity #FreeTools #DigitalTips"
+        ),
+        fb_first_comment=f"Bonus tip: start small when exploring {topic}.",
     )
 
 
@@ -243,6 +266,8 @@ def generate_queue_from_ideas(
             "urls": spec.urls,
             "broll_queries": spec.broll_queries,
             "script": spec.script,
+            "fb_caption": spec.fb_caption,
+            "fb_first_comment": spec.fb_first_comment,
         }
         queue.append(entry)
         write_queue(queue_file, queue)

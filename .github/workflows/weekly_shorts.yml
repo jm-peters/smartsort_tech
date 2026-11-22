@@ -75,6 +75,18 @@ jobs:
           GITHUB_ACTIONS: "true"
         run: |
           python compile_weekly.py --publish
+      - name: Export Facebook Reels Bundle
+        if: ${{ always() }}
+        run: |
+          python .github/scripts/export_facebook_pack.py
+      - name: Upload Facebook Weekly Pack Artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: facebook-weekly-pack
+          path: output/
+          retention-days: 14
+          if-no-files-found: warn
       - name: Commit queue updates
         id: commit
         run: |

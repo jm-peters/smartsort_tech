@@ -84,6 +84,12 @@ add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as repository Actions secrets.
 The workflow sends a success or failure summary after each run and continues
 normally if Telegram is unavailable or either secret is missing.
 
+Each weekly Actions run also publishes a `facebook-weekly-pack` artifact for
+14 days. Download it from the workflow run's Artifacts section to get rendered
+videos and `facebook_captions.txt`; recent completed videos use their generated
+Facebook caption and first-comment copy, with compatible fallbacks for older
+queue entries.
+
 ## Notes
 
 - Review Gemini-generated scripts, links, claims, and stock footage licenses
