@@ -1,5 +1,4 @@
 import inspect
-import importlib.util
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -15,39 +14,12 @@ import compile_weekly
 import gemini_client
 from google.genai.errors import ServerError
 
-FACEBOOK_EXPORT_PATH = (
-    Path(__file__).resolve().parent / ".github" / "scripts" / "export_facebook_pack.py"
-)
-FACEBOOK_EXPORT_SPEC = importlib.util.spec_from_file_location(
-    "export_facebook_pack", FACEBOOK_EXPORT_PATH
-)
-assert FACEBOOK_EXPORT_SPEC and FACEBOOK_EXPORT_SPEC.loader
-facebook_export = importlib.util.module_from_spec(FACEBOOK_EXPORT_SPEC)
-FACEBOOK_EXPORT_SPEC.loader.exec_module(facebook_export)
-
-
 class PipelineTest(unittest.TestCase):
-    def test_facebook_export_includes_latest_done_and_legacy_fallback(self):
-        queue = [
-            {
-                "id": f"short_{index:02d}",
-                "status": "done",
-                "title": f"Video {index} #Shorts",
-                "urls": [f"https://example.com/{index}"],
-            }
-            for index in range(1, 7)
-        ]
-        queue.insert(0, {"id": "pending", "status": "pending", "title": "Skip"})
-        captions = facebook_export.build_facebook_captions(queue)
-        self.assertNotIn("short_01.mp4", captions)
-        self.assertIn("short_06.mp4", captions)
-        self.assertIn("CAPTION:\nVideo 6", captions)
-        self.assertIn("FIRST COMMENT:\nhttps://example.com/6", captions)
-
     def test_high_retention_prompt_and_duplicate_filter(self):
         prompt = idea_generator.build_high_retention_prompt("Free browser tools")
-        self.assertIn("CURIOSITY-GAP HOOK", prompt)
-        self.assertIn("no login walls", prompt)
+        self.assertIn("STEP 1", prompt)
+        self.assertIn("MANDATORY ENDING", prompt)
+        self.assertIn("public, login-free", prompt)
 
         winners = [{"title": "Winning Chrome trick", "score": 5000}]
         analytics_prompt = analytics_loop.build_analytics_topic_prompt(
@@ -84,8 +56,8 @@ class PipelineTest(unittest.TestCase):
             queue = idea_generator.load_queue(queue_file)
             self.assertEqual(len(queue), 1)
             self.assertIn("A practical productivity topic", queue[0]["title"])
-            self.assertTrue(queue[0]["fb_caption"])
-            self.assertTrue(queue[0]["fb_first_comment"])
+            self.assertNotIn("fb_caption", queue[0])
+            self.assertNotIn("fb_first_comment", queue[0])
 
     def test_gemini_retry_falls_back_to_lite_model(self):
         calls = []
@@ -121,10 +93,8 @@ class PipelineTest(unittest.TestCase):
             description="Test description",
             tags=["test"],
             urls=["https://example.com"],
-            broll_queries=["laptop screen", "desk setup", "phone notes"],
+            broll_queries=["laptop screen", "desk setup", "phone notes", "typing hands"],
             script=" ".join(["word"] * 80),
-            fb_caption="Curious hook\n• One\n• Two\n• Three\nWhat next?",
-            fb_first_comment="Tool links below.",
         )
         idea_generator.validate_spec(spec, "test topic")
         self.assertTrue(spec.title.endswith("#Shorts"))
@@ -418,14 +388,12 @@ class PipelineTest(unittest.TestCase):
             "youtube_publisher.py",
             "videos.json",
             ".github/workflows/weekly_shorts.yml",
-            ".github/scripts/export_facebook_pack.py",
         ):
             self.assertTrue((Path(__file__).resolve().parent / name).is_file())
         workflow = (
             Path(__file__).resolve().parent / ".github" / "workflows" / "weekly_shorts.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn("name: facebook-weekly-pack", workflow)
-        self.assertIn("retention-days: 14", workflow)
+        self.assertNotIn("facebook", workflow.casefold())
 
 
 if __name__ == "__main__":

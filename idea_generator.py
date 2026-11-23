@@ -20,15 +20,14 @@ class ShortSpec(BaseModel):
     description: str
     tags: list[str]
     urls: list[str] = Field(max_length=3)
-    broll_queries: list[str] = Field(min_length=3, max_length=3)
+    broll_queries: list[str] = Field(min_length=4, max_length=4)
     script: str
-    fb_caption: str
-    fb_first_comment: str
 
 
 SYSTEM_INSTRUCTIONS = """
-You are an elite YouTube Shorts scriptwriter and retention strategist for a fast-paced faceless tech, AI, and productivity channel.
-Every script you write is engineered for strong first-three-second curiosity, rapid pacing, and subscriber conversion.
+You are an elite YouTube Shorts scriptwriter and viral retention strategist.
+You adapt your storytelling structure to the exact format of the topic—whether it is a rapid-fire 5-tips list, a software showdown, a cyber safety warning, an AI prompt upgrade, a gripping 35-second true story, or a hidden device shortcut.
+Every script is engineered for >75% viewed-vs-swipe-away and >95% average percentage viewed.
 """
 
 
@@ -36,26 +35,29 @@ def build_high_retention_prompt(topic: str) -> str:
     return f"""
 Write a high-retention 35-second YouTube Short package about: "{topic}".
 
-STRICT SCRIPT RULES (75 to 90 words total):
-1. CURIOSITY-GAP HOOK (First 3 seconds / about 12 words):
-   - NEVER start with "Hey guys", "Welcome back", "In this video", or "Today we are looking at".
-   - Start immediately with a bold pattern interrupt, hidden shortcut, or cost/time-saving shock.
-2. ZERO-FLUFF BODY (Seconds 3 to 29):
-   - Deliver 1 to 3 concrete, immediately actionable steps or tools.
-   - Use short, punchy, conversational sentences of 8 to 14 words.
-3. SPECIFIC SUBSCRIBER TEASER + LOOP ENDING (Last 5 seconds / about 15 words):
-   - NEVER say generic "Like and subscribe for more".
-   - Tie the subscribe call-to-action to a specific upcoming payoff or open loop.
+STEP 1 — DETECT FORMAT AND APPLY THE MATCHING STRUCTURE (75 to 95 words total):
+- IF "5 TIPS / GROWTH / MONETIZATION / HABITS" TOPIC:
+  * Hook (0-3s): Call out the exact goal or mistake.
+  * Body (3-29s): Rapid-fire numbered tips ("One... Two... Three... Four... Five..."), with one crisp, punchy sentence per tip.
+  * Visuals: Leave urls as [] and provide exactly 4 energetic broll_queries.
+- IF "STORY / MYSTERY / HISTORY" TOPIC:
+  * Hook (0-3s): Open in the middle of the tension or paradox.
+  * Body (3-29s): Tell the cause, turning point, and surprising lesson in vivid, simple language.
+  * Visuals: Leave urls as [] and provide exactly 4 cinematic broll_queries.
+- IF "TOOL / WEBSITE / AI PROMPT / SECURITY / SHORTCUT" TOPIC:
+  * Hook (0-3s): Immediate time, money, or safety shock.
+  * Body (3-29s): Show the exact steps or before-and-after payoff clearly.
+  * Visuals: Provide 1 to 3 real, public, login-free urls if a live website is demonstrated, plus exactly 4 fallback broll_queries.
 
-METADATA & VISUAL RULES:
-- title: Under 58 characters, curiosity-driven, and it MUST end with #Shorts.
-- description: 2 punchy lines summarizing the value, a question to spark comments, and 4 relevant hashtags including #Shorts.
+STEP 2 — MANDATORY ENDING FOR ALL FORMATS (last 5 seconds):
+- NEVER say generic "Like and subscribe for more".
+- End with a specific curiosity teaser tied to the next upload.
+
+METADATA RULES:
+- title: Under 58 characters, curiosity-driven, and MUST end with #Shorts.
+- description: 2 punchy lines summarizing the takeaway plus an engaging comment question and 4 hashtags including #Shorts.
 - tags: 5 to 7 high-search-volume lowercase keywords.
-- urls: 1 to 3 real, publicly accessible URLs with no login walls ONLY if the topic demonstrates specific websites/tools; otherwise [].
-- broll_queries: Always provide exactly 3 short 2-word visual search phrases.
-- fb_caption: A Facebook Reel caption with a one-line curiosity hook, 3 short bullet takeaways, an open question, and hashtags #TechHacks #Productivity #FreeTools #DigitalTips. Do not include URLs or #Shorts.
-- fb_first_comment: A helpful first comment listing the exact tool names/websites mentioned in the script, or a bonus tip if no URLs were used.
-- Keep every claim accurate and never invent URLs, features, or statistics.
+- Keep every claim accurate and never invent URLs, features, statistics, or tool capabilities.
 """
 
 
@@ -92,23 +94,16 @@ def validate_spec(spec: ShortSpec, topic: str) -> None:
     if len(spec.title) >= 60 or not spec.title.endswith("#Shorts"):
         raise ValueError(f"Gemini returned an invalid title for {topic!r}: {spec.title!r}")
     word_count = len(spec.script.split())
-    if not 75 <= word_count <= 90:
+    if not 75 <= word_count <= 95:
         raise ValueError(
-            f"Gemini returned a {word_count}-word script for {topic!r}; expected 75-90."
+            f"Gemini returned a {word_count}-word script for {topic!r}; expected 75-95."
         )
-    if any(not query.strip() or len(query.split()) > 5 for query in spec.broll_queries):
-        raise ValueError(
-            f"Gemini returned an empty or overly long B-roll query for {topic!r}."
-        )
-    if (
-        not spec.fb_caption.strip()
-        or "#shorts" in spec.fb_caption.casefold()
-        or "http://" in spec.fb_caption.casefold()
-        or "https://" in spec.fb_caption.casefold()
-        or not spec.fb_first_comment.strip()
+    if len(spec.broll_queries) != 4 or any(
+        not query.strip() or len(query.split()) > 5
+        for query in spec.broll_queries
     ):
         raise ValueError(
-            f"Gemini returned invalid Facebook copy for {topic!r}."
+            f"Gemini returned invalid B-roll queries for {topic!r}; expected exactly 4."
         )
 
 
@@ -122,6 +117,7 @@ def fallback_spec(topic: str) -> ShortSpec:
             "technology desk setup",
             "phone screen closeup",
             "person using laptop",
+            "modern creator workspace",
         ],
         script=(
             f"Here is a simple way to think about {topic}. Start with the most "
@@ -132,15 +128,6 @@ def fallback_spec(topic: str) -> ShortSpec:
             "These practical habits save time, reduce mistakes, and make it "
             "much easier to get consistent results. Try this approach now."
         ),
-        fb_caption=(
-            f"One simple way to approach {topic}.\n"
-            "• Start with the result you want.\n"
-            "• Test one small step.\n"
-            "• Check your assumptions.\n"
-            "What would you try first?\n"
-            "#TechHacks #Productivity #FreeTools #DigitalTips"
-        ),
-        fb_first_comment=f"Bonus tip: start small when exploring {topic}.",
     )
 
 
@@ -266,8 +253,6 @@ def generate_queue_from_ideas(
             "urls": spec.urls,
             "broll_queries": spec.broll_queries,
             "script": spec.script,
-            "fb_caption": spec.fb_caption,
-            "fb_first_comment": spec.fb_first_comment,
         }
         queue.append(entry)
         write_queue(queue_file, queue)

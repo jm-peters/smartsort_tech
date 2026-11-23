@@ -29,11 +29,11 @@ MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
 
 STARTER_TOPICS = [
-    "Practical ways to use free AI tools for everyday tasks",
-    "Useful browser features that save time",
-    "Simple phone settings that improve daily use",
-    "Free productivity tools for organizing work",
-    "Easy digital habits that reduce online clutter",
+    "Here are 5 brutal YouTube monetization and growth tips nobody tells small channels",
+    "Stop paying for Photoshop and Office when these 3 free websites do the exact same thing",
+    "How to check if any suspicious link or website is a scam in 5 seconds before clicking",
+    "How a single missing hyphen in code destroyed a 125 million dollar NASA rocket",
+    "5 hidden Windows and Chrome keyboard shortcuts that make you look like a pro",
 ]
 
 
@@ -41,20 +41,26 @@ def build_analytics_topic_prompt(
     winners: list[dict[str, Any]], existing_titles: list[str]
 ) -> str:
     return f"""
-Analyze these top-performing YouTube Shorts from my channel (ranked by retention-weighted score):
+Analyze these top-performing YouTube Shorts from my channel:
 {json.dumps(winners, indent=2)}
 
-ALREADY PUBLISHED OR QUEUED TITLES (DO NOT REPEAT THESE):
-{json.dumps(existing_titles[-25:], indent=2)}
+ALREADY PUBLISHED OR QUEUED TITLES (DO NOT REPEAT):
+{json.dumps(existing_titles[-30:], indent=2)}
 
 TASK:
-Generate 5 fresh, high-curiosity follow-up Short topic concepts that double down on what worked above.
+Generate 5 high-virality YouTube Short concepts for next week by selecting and rotating across these 6 proven formats (choose 5 distinct formats per week):
 
-STRICT RULES FOR EVERY TOPIC CONCEPT:
-1. PATTERN RECOGNITION: Identify why the top winners scored high and create 3 spin-offs on the #1 winning pattern plus 2 adjacent curiosity angles.
-2. CURIOSITY-GAP FRAMING: Use hooks such as hidden settings or free tools, never dry category labels.
-3. VISUAL-FRIENDLY: Demonstrate the topic on public, login-free websites or everyday phone/laptop screens.
-4. ZERO DUPLICATES: Do not repeat any tool, setting, or exact title from the 25-title memory window.
+1. RAPID-FIRE 5 TIPS ("Here are 5 tips for..."): Actionable tips on YouTube growth, monetization, productivity, focus, or digital side-hustles.
+2. PAID VS. FREE SHOWDOWN: Compare an expensive subscription app against a 100% free browser or open-source alternative.
+3. CYBER SAFETY & SCAM ALERT: A privacy setting, fake-link check, or account-protection hack everyone needs.
+4. AI PROMPT UPGRADE: A "Weak Prompt vs. Pro Prompt" before-and-after demonstration on a free AI tool.
+5. TECH MICRO-STORY / MYSTERY: A gripping true tech story, engineering blunder, or hidden history explainer.
+6. HIDDEN DEVICE SHORTCUT: A built-in Windows, Mac, Chrome, Android, or iPhone feature requiring zero downloads.
+
+RULES:
+- Skew slightly toward themes similar to my top winners above while maintaining format variety.
+- Frame every topic with a strong curiosity gap rather than a dry category label.
+- Ensure URLs suggested are public and login-free; for story or tips topics, leave urls empty so stock B-roll is used.
 """
 
 
